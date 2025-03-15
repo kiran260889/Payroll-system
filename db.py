@@ -9,34 +9,30 @@ config.read("config.ini")
 def get_db_connection():
     """Connect to PostgreSQL database"""
     try:
-        conn = psycopg2.connect(
+        return psycopg2.connect(
             dbname=config["database"]["dbname"],
             user=config["database"]["user"],
             password=config["database"]["password"],
             host=config["database"]["host"],
             port=config["database"]["port"]
         )
-        print("Debug: Database connection successful")  # Debugging step
-        return conn
-    except Exception as e:
-        print(f"Debug: Database connection failed: {e}")
-        return None
+    except Exception:
+        return None  # Return None if connection fails
 
 def check_password(input_password, stored_hash):
     """Verify input password against stored hash"""
     try:
-        is_valid = bcrypt.checkpw(input_password.encode(), stored_hash.encode())
-        print(f"🔍 Debug: Password check result: {is_valid}")  # Debugging step
-        return is_valid
-    except Exception as e:
-        print(f" Debug: Password check error: {e}")
-        return False
+        return bcrypt.checkpw(input_password.encode(), stored_hash.encode())
+    except Exception:
+        return False  # Return False if password verification fails
 
 def get_user_designation(user_id):
     """Retrieve the designation (role) of a user from the database"""
     conn = get_db_connection()
+    if not conn:
+        return None
+
     cur = conn.cursor()
-    
     cur.execute("SELECT designation FROM users WHERE user_id = %s", (user_id,))
     user = cur.fetchone()
     
@@ -46,12 +42,9 @@ def get_user_designation(user_id):
     return user[0] if user else None
 
 def authenticate_user(user_id, password):
-    """Authenticate user by User ID and password"""
-    #print(f" Debug: Authenticating User ID {user_id}")  # Debugging step
-
+    """Authenticate user by verifying User ID and password"""
     conn = get_db_connection()
-    if conn is None:
-        print("Debug: No database connection.")
+    if not conn:
         return None, None
 
     cur = conn.cursor()
@@ -61,18 +54,15 @@ def authenticate_user(user_id, password):
         user = cur.fetchone()
 
         if user:
-            #print(" Debug: User found in database")  # Debugging step
-            stored_hash = user[0]
-            if check_password(password, stored_hash):
-             #   print("Debug: Password verified")  # Debugging step
+            stored_hash, designation = user
+            if check_password(password, stored_hash):  
                 cur.close()
                 conn.close()
-                return user_id, user[1]  # Return user_id and designation
-         
+                return user_id, designation  #  Return user_id if password is correct
 
-    except Exception as e:
-        print(f"Debug: Error fetching user data: {e}")
+    except Exception:
+        pass  # Suppress errors for security reasons
 
     cur.close()
     conn.close()
-    return None, None
+    return None, None  # Return None if authentication fails
