@@ -3,7 +3,7 @@ import signal
 import sys
 import getpass
 import bcrypt
-from db import get_user_designation, authenticate_user, get_db_connection
+from db import authenticate_user, get_db_connection
 from shift_management import assign_shift
 from hr import HR
 from payroll import PayrollSystem
@@ -19,6 +19,33 @@ def signal_handler(sig, frame):
         print("\n Forced logout detected! Logging out...")
         handle_forced_logout(current_user_id)  # Ensure proper logout tracking
     sys.exit(0)
+
+def force_password_reset(user_id):
+    """Prompt the user to reset their password before accessing the system."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    print("\n You must change your password before proceeding.")
+
+    while True:
+        new_password = getpass.getpass("Enter New Password: ").strip()
+        confirm_password = getpass.getpass("Confirm New Password: ").strip()
+
+        if new_password and new_password == confirm_password:
+            hashed_password = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+            cur.execute("""
+                UPDATE users 
+                SET password_hash = %s, password_reset_required = FALSE 
+                WHERE user_id = %s
+            """, (hashed_password, user_id))
+            conn.commit()
+            print("Password changed successfully! You can now access the system.")
+            break
+        else:
+            print("Passwords do not match. Try again.")
+
+    cur.close()
+    conn.close()
 
 def get_menu(role):
     """Generate menu options based on user role."""
@@ -68,83 +95,80 @@ def main():
             return
         
         user_id = int(user_id)  # Convert input to integer
-        password = getpass.getpass("Enter your password: ")  # Secure password input
+        password = getpass.getpass("Enter your password: ").strip()  # Secure password input
 
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        # Authenticate user
-        cur.execute("SELECT user_id, designation FROM users WHERE user_id = %s", (user_id,))
-        user = cur.fetchone()
-
-        if not user:
-            print("Invalid User ID. Try again.")
+        if not password:
+            print("Password cannot be empty. Please try again.")
             return
+
+        authenticated_user_id, designation, password_reset_required = authenticate_user(user_id, password)
+
+        if authenticated_user_id is None:
+            print("Invalid User ID or Password. Access Denied.")
+            return  # Prevent further execution if authentication fails
         
-        authenticated_user_id, designation = user
+        #  Force password reset if required
+        if password_reset_required:
+            force_password_reset(authenticated_user_id)
 
-        if authenticated_user_id:
-            print(f"\n Logged in as {designation} (User ID: {user_id})")
+        print(f"\n Logged in as {designation} (User ID: {user_id})")
 
-            # Setup Ctrl + C signal handler
-            setup_signal_handler(user_id)
+        # Setup Ctrl + C signal handler
+        setup_signal_handler(user_id)
 
-            shift_mgmt = ShiftManagement()
-            payroll_hist = PayrollHistory()
-            holiday_cal = HolidayCalendar()
-            leave_mgmt = LeaveManagement()
-            hr = HR()
-            payroll = PayrollSystem()
+        shift_mgmt = ShiftManagement()
+        payroll_hist = PayrollHistory()
+        holiday_cal = HolidayCalendar()
+        leave_mgmt = LeaveManagement()
+        hr = HR()
+        payroll = PayrollSystem()
 
-            menu = get_menu(designation)
+        menu = get_menu(designation)
 
-            while True:
-                print("\n MAIN MENU")
-                for key, value in menu.items():
-                    print(f"{key}. {value}")
+        while True:
+            print("\n MAIN MENU")
+            for key, value in menu.items():
+                print(f"{key}. {value}")
 
-                choice = input("Enter your choice: ")
-                if choice == '0':
-                    print("\n Logging out...")
-                    print(end_time_tracking(user_id))
-                    break
-                elif choice == '1':
-                    print(start_time_tracking(user_id))  # Start time tracking
-                elif choice == '2':
-                    print(shift_mgmt.view_shift_schedule(user_id))
-                elif choice == '3':
-                    print(payroll_hist.get_last_three_weeks_pay(user_id))
-                elif choice == '4':
-                    print(holiday_cal.view_holiday_calendar(user_id))
-                elif choice == '5':
-                    emp_id = user_id
-                    start_date = input("Enter Start Date (YYYY-MM-DD): ")
-                    end_date = input("Enter End Date (YYYY-MM-DD): ")
-                    reason = input("Enter Leave Reason: ")
-                    print(leave_mgmt.apply_leave(emp_id, start_date, end_date, reason))
-                elif choice == '6' and designation == "Project Manager":
-                    print(assign_shift(user_id))
-                elif choice == '7' and designation in ["Project Manager", "HR"]:
-                    print(leave_mgmt.process_leave_request(user_id))  # ✅ **No more Employee ID input**
-                elif choice == '8' and designation == "HR":
-                    print(hr.onboard_employee())  
-                elif choice == '9' and designation == "HR":
-                    print(hr.offboard_employee())  
-                elif choice == '10' and designation == "HR":
-                    print(payroll.process_weekly_payroll(user_id))
-                elif choice == '11' and designation == "HR":
-                    print(holiday_cal.add_holiday())
-                elif choice == '12' and designation == "HR":
-                    print(holiday_cal.delete_holiday())
-                elif choice == '13' and designation == "HR":
-                    print(holiday_cal.view_holiday_calendar(user_id))
-                elif choice == '14': 
-                    print(end_time_tracking(user_id))  #  Manual logout tracking
-                else:
-                    print("Invalid option. Try again.")
-
-        cur.close()
-        conn.close()
+            choice = input("Enter your choice: ")
+            if choice == '0':
+                print("\n Logging out...")
+                print(end_time_tracking(user_id))
+                break
+            elif choice == '1':
+                print(start_time_tracking(user_id))  
+            elif choice == '2':
+                print(shift_mgmt.view_shift_schedule(user_id))
+            elif choice == '3':
+                print(payroll_hist.get_last_three_weeks_pay(user_id))
+            elif choice == '4':
+                print(holiday_cal.view_holiday_calendar(user_id))
+            elif choice == '5':
+                emp_id = user_id
+                start_date = input("Enter Start Date (YYYY-MM-DD): ")
+                end_date = input("Enter End Date (YYYY-MM-DD): ")
+                reason = input("Enter Leave Reason: ")
+                print(leave_mgmt.apply_leave(emp_id, start_date, end_date, reason))
+            elif choice == '6' and designation == "Project Manager":
+                print(assign_shift(user_id))
+            elif choice == '7' and designation in ["Project Manager", "HR"]:
+                print(leave_mgmt.process_leave_request(user_id))  # No more Employee ID input
+            elif choice == '8' and designation == "HR":
+                print(hr.onboard_employee())  
+            elif choice == '9' and designation == "HR":
+                print(hr.offboard_employee())  
+            elif choice == '10' and designation == "HR":
+                print(payroll.process_weekly_payroll(user_id))
+            elif choice == '11' and designation == "HR":
+                print(holiday_cal.add_holiday())
+            elif choice == '12' and designation == "HR":
+                print(holiday_cal.delete_holiday())
+            elif choice == '13' and designation == "HR":
+                print(holiday_cal.view_holiday_calendar(user_id))
+            elif choice == '14': 
+                print(end_time_tracking(user_id))  # Manual logout tracking
+            else:
+                print("Invalid option. Try again.")
 
 if __name__ == "__main__":
     main()

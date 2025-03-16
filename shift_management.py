@@ -21,9 +21,9 @@ def assign_shift(pm_id):
     employees = get_employees_reporting_to_pm(pm_id)
 
     if not employees:
-        return "❌ No employees found reporting to you."
+        return "No employees found reporting to you."
 
-    print("\n📋 Employees Reporting to You:")
+    print("\n Employees Reporting to You:")
     for emp in employees:
         print(f"   - Employee ID: {emp[0]}, Name: {emp[1]}")
 
@@ -31,7 +31,7 @@ def assign_shift(pm_id):
 
     # Validate Employee ID
     if not any(str(emp[0]) == emp_id for emp in employees):
-        return "❌ Invalid Employee ID. Please select from the list."
+        return " Invalid Employee ID. Please select from the list."
 
     shift_code = input("Enter Shift Code (M, G, S, N): ").strip().upper()
 
@@ -45,7 +45,7 @@ def assign_shift(pm_id):
     if not valid_shift:
         cur.close()
         conn.close()
-        return "❌ Invalid Shift Code. Please enter a valid shift (M, G, S, N)."
+        return "Invalid Shift Code. Please enter a valid shift (M, G, S, N)."
 
     # Assign shift with week start and end date
     cur.execute("""
@@ -59,4 +59,4 @@ def assign_shift(pm_id):
     cur.close()
     conn.close()
 
-    return f"✅ Shift {shift_code} assigned to Employee ID {emp_id}."
+    return f"Shift {shift_code} assigned to Employee ID {emp_id}."

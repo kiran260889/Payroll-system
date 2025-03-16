@@ -16,14 +16,25 @@ def get_db_connection():
             host=config["database"]["host"],
             port=config["database"]["port"]
         )
-    except Exception:
+    except Exception as e:
+        print(f"Database connection failed: {e}")
         return None  # Return None if connection fails
 
 def check_password(input_password, stored_hash):
-    """Verify input password against stored hash"""
+    """Verify input password against stored bcrypt hash"""
+    if not input_password or not stored_hash:
+        print("No password provided or stored hash is missing.")
+        return False  # Prevent login if input password or stored hash is empty
+
     try:
-        return bcrypt.checkpw(input_password.encode(), stored_hash.encode())
-    except Exception:
+        valid = bcrypt.checkpw(input_password.encode(), stored_hash.encode())  # Validate password
+        if valid:
+            print("Password verification successful.")
+        else:
+            print("Password does not match.")
+        return valid
+    except Exception as e:
+        print(f"Password validation error: {e}")
         return False  # Return False if password verification fails
 
 def get_user_designation(user_id):
@@ -45,24 +56,24 @@ def authenticate_user(user_id, password):
     """Authenticate user by verifying User ID and password"""
     conn = get_db_connection()
     if not conn:
-        return None, None
+        return None, None, None  # Return three values to match unpacking in CLI
 
     cur = conn.cursor()
 
     try:
-        cur.execute("SELECT password_hash, designation FROM users WHERE user_id = %s", (user_id,))
+        cur.execute("SELECT password_hash, designation, password_reset_required FROM users WHERE user_id = %s", (user_id,))
         user = cur.fetchone()
 
         if user:
-            stored_hash, designation = user
+            stored_hash, designation, password_reset_required = user
             if check_password(password, stored_hash):  
                 cur.close()
                 conn.close()
-                return user_id, designation  #  Return user_id if password is correct
+                return user_id, designation, password_reset_required  # Return user_id, role, and reset flag
 
     except Exception:
         pass  # Suppress errors for security reasons
 
     cur.close()
     conn.close()
-    return None, None  # Return None if authentication fails
+    return None, None, None  # Ensure three values are returned

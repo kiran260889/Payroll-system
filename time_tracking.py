@@ -44,11 +44,11 @@ def start_time_tracking(user_id):
     shift_code, shift_start, shift_end = get_employee_shift(user_id)
 
     if not shift_code or not shift_start or not shift_end:
-        return "❌ No shift assigned. Time tracking is not allowed."
+        return "No shift assigned. Time tracking is not allowed."
 
     # Prevent logging in after shift hours
     if current_time > shift_end:
-        return f"❌ You cannot start time tracking after your shift ends at {shift_end.strftime('%I:%M %p')}."
+        return f"You cannot start time tracking after your shift ends at {shift_end.strftime('%I:%M %p')}."
 
     # Check if already logged in today
     current_date = datetime.date.today()
@@ -60,12 +60,12 @@ def start_time_tracking(user_id):
     existing_session = cur.fetchone()
 
     if existing_session:
-        return f"✅ Time tracking already started for today ({current_date})."
+        return f"Time tracking already started for today ({current_date})."
 
     # Ask for reason if late
     late_reason = None
     if current_time > shift_start:
-        print("⚠️ You are logging in late! Please select a reason:")
+        print("You are logging in late! Please select a reason:")
         for idx, reason in enumerate(predefined_reasons, 1):
             print(f"{idx}. {reason}")
 
@@ -83,7 +83,7 @@ def start_time_tracking(user_id):
     cur.close()
     conn.close()
 
-    return f"✅ Time tracking started at {login_time.strftime('%Y-%m-%d %H:%M:%S')}. Late reason recorded: {late_reason if late_reason else 'N/A'}."
+    return f"Time tracking started at {login_time.strftime('%Y-%m-%d %H:%M:%S')}. Late reason recorded: {late_reason if late_reason else 'N/A'}."
 def end_time_tracking(user_id):
     """Stop time tracking, ask for early logout reason if needed, and calculate total work hours."""
     conn = get_db_connection()
@@ -101,7 +101,7 @@ def end_time_tracking(user_id):
     last_login = cur.fetchone()
 
     if not last_login:
-        return "❌ No active session found for today. Please start time tracking first."
+        return "No active session found for today. Please start time tracking first."
 
     track_id, login_time = last_login
     logout_time = datetime.datetime.now()
@@ -119,14 +119,14 @@ def end_time_tracking(user_id):
     shift_data = cur.fetchone()
     
     if not shift_data:
-        return "❌ No shift assigned. Logout not recorded."
+        return "No shift assigned. Logout not recorded."
 
     shift_code, shift_start, shift_end, reporting_pm = shift_data
     early_logout_reason = None
 
     # If logging out before shift end, ask for a reason
     if logout_time.time() < shift_end:
-        print("\n⚠️ You are logging out early! Please select a reason:")
+        print("\n You are logging out early! Please select a reason:")
         for idx, reason in enumerate(predefined_reasons, 1):
             print(f"{idx}. {reason}")
 
@@ -151,7 +151,7 @@ def end_time_tracking(user_id):
 
     # Send Email to Reporting Manager
     if early_logout_reason and pm_email:
-        subject = "🚨 Employee Early Logout Alert"
+        subject = "Employee Early Logout Alert"
         body = f"""
         Hello,
 
@@ -166,7 +166,7 @@ def end_time_tracking(user_id):
         """
         send_email(pm_email[0], subject, body)
 
-    return f"✅ Logout recorded. Early logout reason: {early_logout_reason if early_logout_reason else 'N/A'}."
+    return f"Logout recorded. Early logout reason: {early_logout_reason if early_logout_reason else 'N/A'}."
 
 def handle_forced_logout(user_id):
     """Handle forced logout when user presses Ctrl + C and ask for logout reason."""
@@ -186,14 +186,14 @@ def handle_forced_logout(user_id):
     shift_data = cur.fetchone()
 
     if not shift_data:
-        print("\n✅ You have successfully logged out.")
+        print("\n You have successfully logged out.")
         sys.exit(0)
 
     shift_code, shift_start, shift_end, reporting_pm = shift_data
     logout_time = datetime.datetime.now()
     early_logout_reason = "Other"
 
-    print("\n⚠️ You are logging out early! Please select a reason:")
+    print("\n You are logging out early! Please select a reason:")
     for idx, reason in enumerate(predefined_reasons, 1):
         print(f"{idx}. {reason}")
 
@@ -205,7 +205,7 @@ def handle_forced_logout(user_id):
             if choice.isdigit() and 1 <= int(choice) <= len(predefined_reasons):
                 early_logout_reason = predefined_reasons[int(choice) - 1]
     except Exception as e:
-        print(f"\n❌ Input Error: {e}. Defaulting to 'Other'.")
+        print(f"\n Input Error: {e}. Defaulting to 'Other'.")
 
     # Store logout reason
     cur.execute("""
@@ -225,7 +225,7 @@ def handle_forced_logout(user_id):
 
     # Send Email to Reporting Manager
     if pm_email:
-        subject = "🚨 Employee Early Logout Alert"
+        subject = "Employee Early Logout Alert"
         body = f"""
         Hello,
 
@@ -240,8 +240,8 @@ def handle_forced_logout(user_id):
         """
         send_email(pm_email[0], subject, body)
 
-    print(f"✅ Early logout recorded with reason: {early_logout_reason}.")
-    print(f"📧 Notification sent to Reporting Manager.")
+    print(f"Early logout recorded with reason: {early_logout_reason}.")
+    print(f"Notification sent to Reporting Manager.")
 
     sys.exit(0)       
 # Register signal handler for Ctrl + C

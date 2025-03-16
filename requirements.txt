@@ -1,0 +1,9 @@
+psycopg2-binary==2.9.9     # PostgreSQL database connector
+bcrypt==4.0.1              # Secure password hashing
+configparser==5.3.0        # Configuration file management
+reportlab==4.0.4           # PDF generation (Payslips)
+smtplib                    # Sending emails (Builtin)
+email                      # Email MIME handling (Builtin)
+datetime                   # Date handling (Builtin)
+getpass                    # Secure password input (Builtin)
+argparse                   # Command-line parsing (Builtin)

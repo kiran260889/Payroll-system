@@ -21,24 +21,24 @@ class PayrollSystem:
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # ✅ Fetch all employees (HR, PM, and Employees)
+        #Fetch all employees (HR, PM, and Employees)
         cur.execute("SELECT user_id, annual_salary, ethnicity, nationality, region, email, name, designation, ird_number, bank_account FROM users")
         employees = cur.fetchall()
 
         if not employees:
-            return "✅ No payroll records to process."
+            return "No payroll records to process."
 
-        payroll_generated = False  # ✅ Track if payroll is generated for at least one employee
+        payroll_generated = False  # Track if payroll is generated for at least one employee
 
         for employee in employees:
             user_id, annual_salary, ethnicity, nationality, region, email, name, designation, ird_number, bank_account = employee
 
-            # ✅ Convert Annual Salary to Hourly Rate
+            # Convert Annual Salary to Hourly Rate
             weekly_hours = 40
             weeks_per_year = 52
             hourly_rate = round(Decimal(annual_salary) / (weeks_per_year * weekly_hours), 2)
 
-            # ✅ Fetch hours worked for each day of the week
+            #  Fetch hours worked for each day of the week
             cur.execute("""
                 SELECT DATE(login_time) AS work_date, 
                        SUM(EXTRACT(EPOCH FROM (logout_time - login_time)) / 3600) AS hours_worked
@@ -52,29 +52,29 @@ class PayrollSystem:
             hours_worked = cur.fetchall()  # List of tuples: [(date, hours_worked), ...]
 
             if not hours_worked:
-                print(f"⚠️ Skipping payroll for {name} (ID: {user_id}) - No valid work hours this week.")
-                continue  # ✅ Skip payroll processing for this employee
+                print(f" Skipping payroll for {name} (ID: {user_id}) - No valid work hours this week.")
+                continue  #  Skip payroll processing for this employee
 
-            # ✅ Calculate total hours worked for the week
+            #  Calculate total hours worked for the week
             total_hours = sum(hours for _, hours in hours_worked)
 
-            # ✅ Calculate salary components
+            #  Calculate salary components
             base_hours = 40  # Standard weekly hours
             overtime_hours = max(total_hours - base_hours, 0)
             regular_hours = min(total_hours, base_hours)
 
-            # ✅ Convert values to Decimal
+            #  Convert values to Decimal
             total_hours = Decimal(total_hours)
             regular_hours = Decimal(regular_hours)
             overtime_hours = Decimal(overtime_hours)
 
-            # ✅ Calculate salary components
+            #  Calculate salary components
             regular_pay = regular_hours * hourly_rate
             overtime_rate = Decimal('1.5')
             overtime_pay = overtime_hours * (hourly_rate * overtime_rate)
             holiday_pay = Decimal(0)
 
-            # ✅ Calculate holiday pay based on region, nationality, and ethnicity
+            #  Calculate holiday pay based on region, nationality, and ethnicity
             cur.execute("""
                 SELECT COUNT(*) FROM holiday_calendar 
                 WHERE holiday_date BETWEEN %s AND %s
@@ -85,11 +85,11 @@ class PayrollSystem:
             holiday_count = cur.fetchone()[0]
             holiday_pay = Decimal(holiday_count * (hourly_rate * 8))  # 8 hours per holiday
 
-            # ✅ Māori 5% additional pay
+            #  Māori 5% additional pay
             is_maori = ethnicity.strip().lower() in ["māori", "maori"]
             maori_bonus = (regular_pay + overtime_pay + holiday_pay) * Decimal('0.05') if is_maori else Decimal(0)
 
-            # ✅ Night shift allowance (For Employees only)
+            #  Night shift allowance (For Employees only)
             night_shift_allowance = Decimal(0)
             if designation == "Employee":
                 cur.execute("SELECT COUNT(*) FROM employee_shifts WHERE user_id = %s AND shift_code = 'N'", (user_id,))
@@ -100,7 +100,7 @@ class PayrollSystem:
             tax_deductions = round(total_earnings * Decimal('0.15'), 2)  # 15% tax
             final_salary = round(total_earnings - tax_deductions, 2)
 
-            # ✅ Generate Payslip for Employees with Valid Work Hours
+            #  Generate Payslip for Employees with Valid Work Hours
             payslip_filename = f"payslip_{user_id}.pdf"
             self.generate_payslip(
     filename=payslip_filename,
@@ -111,7 +111,7 @@ class PayrollSystem:
     annual_salary=annual_salary,
     week_start=week_start,
     week_end=week_end,
-    total_hours=total_hours,  # ✅ FIXED: Change from `hours_worked` to `total_hours`
+    total_hours=total_hours,  
     regular_pay=regular_pay,
     overtime_pay=overtime_pay,
     holiday_pay=holiday_pay,
@@ -124,7 +124,7 @@ class PayrollSystem:
 )
 
 
-            # ✅ Send payslip email with PDF attachment
+            # Send payslip email with PDF attachment
             subject = "📑 Your Weekly Payslip"
             body = f"""
             Hello {name},
@@ -137,16 +137,16 @@ class PayrollSystem:
             """
             send_email(email, subject, body, attachment_path=payslip_filename)
 
-            payroll_generated = True  # ✅ At least one employee had payroll generated
+            payroll_generated = True  # At least one employee had payroll generated
 
         conn.commit()
         cur.close()
         conn.close()
 
         if not payroll_generated:
-            return "⚠️ No payroll processed. No employees logged in and out this week."
+            return "No payroll processed. No employees logged in and out this week."
 
-        return "✅ Payroll processed successfully. Payslips have been emailed to employees who worked."
+        return "Payroll processed successfully. Payslips have been emailed to employees who worked."
 
     def generate_payslip(self, filename, name, designation, ird_number, bank_account, annual_salary, 
                          week_start, week_end, total_hours, regular_pay, overtime_pay, holiday_pay, 
@@ -154,23 +154,22 @@ class PayrollSystem:
                          is_maori=False):
         """Generate a professional **tabular payslip** with Māori language support."""
 
-        # ✅ Company Name
+        #  Company Name
         company_name = "Car Rental Corporation"
 
-        # ✅ Register Fonts
+        #  Register Fonts
         font_path_regular = "NotoSans-Regular.ttf"
         font_path_bold = "NotoSans-Bold.ttf"
-        if not os.path.exists(font_path_regular) or not os.path.exists(font_path_bold):
-            raise FileNotFoundError("❌ Missing font files 'NotoSans-Regular.ttf' or 'NotoSans-Bold.ttf'. Download them.")
+        if not os.path.exists(font_path_regular) or not os.path.exists(font_path_bold):        raise FileNotFoundError("❌ Missing font files 'NotoSans-Regular.ttf' or 'NotoSans-Bold.ttf'. Download them.")
 
         pdfmetrics.registerFont(TTFont("NotoSans", font_path_regular))
         pdfmetrics.registerFont(TTFont("NotoSans-Bold", font_path_bold))
         
-        # ✅ Create PDF Document
+        #  Create PDF Document
         doc = SimpleDocTemplate(filename, pagesize=letter)
         elements = []
 
-        # ✅ Styles
+        #  Styles
         styles = getSampleStyleSheet()
         title_style = styles["Title"]
         title_style.fontName = "NotoSans-Bold"
@@ -181,12 +180,12 @@ class PayrollSystem:
         normal_style.fontName = "NotoSans"
         normal_style.fontSize = 12
 
-        # ✅ Convert Annual Salary to Hourly Rate
+        #  Convert Annual Salary to Hourly Rate
         weeks_per_year = 52
         weekly_hours = 40
         hourly_rate = round(Decimal(annual_salary) / (weeks_per_year * weekly_hours), 2)
 
-        # ✅ Māori Language Support
+        #  Māori Language Support
         lang = {
             "Employee Payslip": "Pūkete Utu Kaimahi" if is_maori else "Employee Payslip",
             "Employee": "Kaimahi" if is_maori else "Employee",
@@ -209,11 +208,11 @@ class PayrollSystem:
             "Net Salary": "Utu tīmata" if is_maori else "Net Salary"
         }
 
-        # ✅ Add Company Name in Bold & Large Font
+        #  Add Company Name in Bold & Large Font
         elements.append(Paragraph(f"<b>{company_name}</b>", title_style))
         elements.append(Spacer(1, 12))  # Space
 
-        # ✅ Add Employee & Payroll Details
+        #  Add Employee & Payroll Details
         elements.append(Paragraph(f"<b>{lang['Employee Payslip']}</b>", title_style))
         elements.append(Spacer(1, 10))
 
@@ -239,7 +238,7 @@ class PayrollSystem:
         elements.append(table)
         elements.append(Spacer(1, 15))
 
-        # ✅ Salary Breakdown Table
+        #  Salary Breakdown Table
         salary_data = [
             [lang["Earnings"], "Amount ($)"],
             [lang["Hourly Rate"], f"{hourly_rate:.2f}"],
@@ -268,7 +267,7 @@ class PayrollSystem:
         elements.append(salary_table)
         elements.append(Spacer(1, 15))
 
-        # ✅ Net Salary
+        #  Net Salary
         final_salary_table = Table([[lang["Net Salary"], f"${final_salary:.2f}"]], colWidths=[200, 120])
         final_salary_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.green),
@@ -281,5 +280,5 @@ class PayrollSystem:
         ]))
         elements.append(final_salary_table)
 
-        # ✅ Build PDF
+        #  Build PDF
         doc.build(elements)

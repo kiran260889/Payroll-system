@@ -9,28 +9,28 @@ class HR:
         conn = get_db_connection()
         cur = conn.cursor()
 
-        print("\n🔹 Employee Onboarding")
+        print("\n Employee Onboarding")
         
         name = input("Enter Employee Name: ").strip()
         email = input("Enter Employee Email: ").strip()
         designation = input("Enter Employee Designation (Employee/Project Manager/HR): ").strip()
         salary = float(input("Enter Employee Annual Salary: ").strip())
 
-        # ✅ Collect IRD Number and Bank Details
+        #  Collect IRD Number and Bank Details
         ird_number = input("Enter Employee IRD Number: ").strip()
         bank_name = input("Enter Employee Bank Name: ").strip()
         bank_account = input("Enter Employee Bank Account Number: ").strip()
 
-        # ✅ Ask for Nationality, Region, and Ethnicity
+        #  Ask for Nationality, Region, and Ethnicity
         nationality = input("Enter Employee Nationality (e.g., New Zealand, Australia, USA): ").strip()
         region = input("Enter Employee Region (e.g., Auckland, Wellington, Sydney): ").strip()
         ethnicity = input("Enter Employee Ethnicity (e.g., Māori, Pākehā, Pacific Islander, Asian): ").strip()
 
-        # ✅ Generate and Hash Default Password
+        #  Generate and Hash Default Password
         password = "CarRental123"
         hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
-        # ✅ Assign Reporting Manager
+        #  Assign Reporting Manager
         cur.execute("SELECT user_id, name FROM users WHERE designation IN ('Project Manager', 'HR')")
         managers = cur.fetchall()
 
@@ -41,7 +41,7 @@ class HR:
         reporting_manager_id = input("Enter Reporting Manager ID from the list above (or leave blank for default HR): ").strip()
         reporting_manager_id = int(reporting_manager_id) if reporting_manager_id.isdigit() else None
 
-        # ✅ Get Reporting Manager Name
+        #  Get Reporting Manager Name
         reporting_manager_name = "HR Department"  # Default if no manager is assigned
         if reporting_manager_id:
             cur.execute("SELECT name FROM users WHERE user_id = %s", (reporting_manager_id,))
@@ -49,7 +49,7 @@ class HR:
             if manager_record:
                 reporting_manager_name = manager_record[0]
 
-        # ✅ Insert Employee Data and Retrieve New User ID
+        #  Insert Employee Data and Retrieve New User ID
         cur.execute("""
             INSERT INTO users (name, email, password_hash, designation, nationality, region, ethnicity, annual_salary, 
                               reporting_project_manager, ird_number, bank_name, bank_account)
@@ -58,11 +58,11 @@ class HR:
         """, (name, email, hashed_password, designation, nationality, region, ethnicity, salary, 
               reporting_manager_id, ird_number, bank_name, bank_account))
 
-        new_user_id = cur.fetchone()[0]  # ✅ Get the inserted user ID
+        new_user_id = cur.fetchone()[0]  #  Get the inserted user ID
 
-        conn.commit()  # ✅ Ensure the user is committed before inserting the shift
+        conn.commit()  #  Ensure the user is committed before inserting the shift
 
-        # ✅ Assign Default Shift "G" (General Shift: 9 AM - 5 PM)
+        #  Assign Default Shift "G" (General Shift: 9 AM - 5 PM)
         week_start = datetime.date.today()
         week_end = week_start + datetime.timedelta(days=6)  # Assign for the entire week
         cur.execute("""
@@ -72,7 +72,7 @@ class HR:
 
         conn.commit()
 
-        # ✅ Send onboarding email with IRD & Bank Details
+        #  Send onboarding email with IRD & Bank Details
         subject = "🎉 Welcome to the Company!"
         body = f"""
         Kia ora {name},
@@ -98,10 +98,10 @@ class HR:
 
         cur.close()
         conn.close()
-        return f"✅ {name} has been onboarded successfully!"
+        return f"{name} has been onboarded successfully!"
     def offboard_employee(self):
         """HR removes an employee from the system."""
-        print("\n🔹 Offboard Employee")
+        print("\n Offboard Employee")
         emp_id = input("Enter Employee ID to remove: ").strip()
 
         conn = get_db_connection()
@@ -112,8 +112,8 @@ class HR:
         employee = cur.fetchone()
 
         if not employee:
-            print("❌ Error: Employee ID not found.")
-            return "❌ Error: Employee not found."
+            print("Error: Employee ID not found.")
+            return "Error: Employee not found."
 
         name, email = employee
 
@@ -123,10 +123,10 @@ class HR:
         cur.close()
         conn.close()
 
-        print(f"✅ Employee {name} (ID: {emp_id}) offboarded successfully.")
+        print(f"Employee {name} (ID: {emp_id}) offboarded successfully.")
 
-        # ✅ Send Offboarding Email
-        subject = "🚀 Offboarding Notice"
+        #  Send Offboarding Email
+        subject = "Offboarding Notice"
         body = f"""
         Dear {name},
 
@@ -139,4 +139,4 @@ class HR:
         """
         send_email(email, subject, body)
 
-        return f"✅ Offboarding email sent to {name} at {email}."
+        return f"Offboarding email sent to {name} at {email}."
